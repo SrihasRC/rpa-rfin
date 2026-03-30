@@ -15,6 +15,9 @@ import { getTransactions } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { PaginatedTransactions } from "@/lib/types";
 import Link from "next/link";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { CircleIcon, ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
+import { cn } from "@/lib/utils";
 
 export default function HistoryPage() {
   const [data, setData] = useState<PaginatedTransactions | null>(null);
@@ -59,9 +62,24 @@ export default function HistoryPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
-              <SelectItem value="HIGH">🔴 High Risk</SelectItem>
-              <SelectItem value="MEDIUM">🟡 Medium Risk</SelectItem>
-              <SelectItem value="LOW">🟢 Low Risk</SelectItem>
+              <SelectItem value="HIGH">
+                <span className="flex items-center gap-2">
+                  <HugeiconsIcon icon={CircleIcon} size={10} className="fill-current text-red-500" />
+                  High Risk
+                </span>
+              </SelectItem>
+              <SelectItem value="MEDIUM">
+                <span className="flex items-center gap-2">
+                  <HugeiconsIcon icon={CircleIcon} size={10} className="fill-current text-amber-500" />
+                  Medium Risk
+                </span>
+              </SelectItem>
+              <SelectItem value="LOW">
+                <span className="flex items-center gap-2">
+                  <HugeiconsIcon icon={CircleIcon} size={10} className="fill-current text-emerald-500" />
+                  Low Risk
+                </span>
+              </SelectItem>
             </SelectContent>
           </Select>
           {data && (
@@ -135,11 +153,13 @@ export default function HistoryPage() {
               Page {data.page} of {data.total_pages}
             </p>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                ← Previous
+              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="gap-2">
+                <HugeiconsIcon icon={ArrowLeft01Icon} size={14} />
+                Previous
               </Button>
-              <Button variant="outline" size="sm" disabled={page >= data.total_pages} onClick={() => setPage((p) => p + 1)}>
-                Next →
+              <Button variant="outline" size="sm" disabled={page >= data.total_pages} onClick={() => setPage((p) => p + 1)} className="gap-2">
+                Next
+                <HugeiconsIcon icon={ArrowRight01Icon} size={14} />
               </Button>
             </div>
           </div>

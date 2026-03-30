@@ -13,6 +13,15 @@ import { getDashboardStats, getTransactions, getReport } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { DashboardStats, Transaction } from "@/lib/types";
 import Link from "next/link";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { 
+  Download01Icon, 
+  Analytics01Icon, 
+  CircleIcon, 
+  AlertCircleIcon, 
+  ChartLineData01Icon, 
+  Money01Icon 
+} from "@hugeicons/core-free-icons";
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -85,10 +94,12 @@ export default function DashboardPage() {
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => getReport("flagged", "csv")}>
-              📥 Flagged Report
+              <HugeiconsIcon icon={Download01Icon} size={16} className="mr-2" />
+              Flagged Report
             </Button>
             <Button variant="outline" size="sm" onClick={() => getReport("compliance", "csv")}>
-              📥 Full Report
+              <HugeiconsIcon icon={Download01Icon} size={16} className="mr-2" />
+              Full Report
             </Button>
           </div>
         </div>
@@ -100,27 +111,27 @@ export default function DashboardPage() {
               title="Total Transactions"
               value={stats.total_transactions.toLocaleString()}
               subtitle={`across ${stats.currencies_seen.length} currencies`}
-              icon="📊"
+              icon={<HugeiconsIcon icon={Analytics01Icon} size={20} />}
             />
             <StatCard
               title="High Risk"
               value={stats.high_risk_count}
               subtitle={`${((stats.high_risk_count / stats.total_transactions) * 100).toFixed(1)}% of total`}
-              icon="🔴"
+              icon={<HugeiconsIcon icon={CircleIcon} size={20} className="fill-current" />}
               variant="danger"
             />
             <StatCard
               title="Medium Risk"
               value={stats.medium_risk_count}
               subtitle={`${((stats.medium_risk_count / stats.total_transactions) * 100).toFixed(1)}% of total`}
-              icon="🟡"
+              icon={<HugeiconsIcon icon={CircleIcon} size={20} className="fill-current" />}
               variant="warning"
             />
             <StatCard
               title="Low Risk"
               value={stats.low_risk_count}
               subtitle={`${((stats.low_risk_count / stats.total_transactions) * 100).toFixed(1)}% of total`}
-              icon="🟢"
+              icon={<HugeiconsIcon icon={CircleIcon} size={20} className="fill-current" />}
               variant="success"
             />
           </div>
@@ -133,20 +144,20 @@ export default function DashboardPage() {
               title="Flagged Transactions"
               value={stats.total_flagged}
               subtitle={`${stats.flagged_percentage}% flagging rate`}
-              icon="⚠️"
+              icon={<HugeiconsIcon icon={AlertCircleIcon} size={20} />}
               variant="warning"
             />
             <StatCard
               title="Avg Risk Score"
               value={(stats.avg_risk_score * 100).toFixed(1) + "%"}
               subtitle="across all transactions"
-              icon="📈"
+              icon={<HugeiconsIcon icon={ChartLineData01Icon} size={20} />}
             />
             <StatCard
               title="Total Volume (USD)"
               value={formatCurrency(stats.total_amount_usd)}
               subtitle="USD-equivalent total"
-              icon="💰"
+              icon={<HugeiconsIcon icon={Money01Icon} size={20} />}
             />
           </div>
         )}

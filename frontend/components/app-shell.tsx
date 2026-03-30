@@ -6,21 +6,30 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
+import { HugeiconsIcon } from "@hugeicons/react";
+import { 
+  Analytics01Icon, 
+  Task01Icon, 
+  DocumentValidationIcon, 
+  BankIcon, 
+  MoneySend01Icon 
+} from "@hugeicons/core-free-icons";
+
 interface AppShellProps {
   children: React.ReactNode;
   role: "admin" | "user";
 }
 
 const adminLinks = [
-  { href: "/dashboard", label: "Overview", icon: "📊" },
-  { href: "/dashboard/transactions", label: "Transactions", icon: "📋" },
-  { href: "/dashboard/reports", label: "Reports", icon: "📄" },
+  { href: "/dashboard", label: "Overview", icon: <HugeiconsIcon icon={Analytics01Icon} size={18} /> },
+  { href: "/dashboard/transactions", label: "Transactions", icon: <HugeiconsIcon icon={Task01Icon} size={18} /> },
+  { href: "/dashboard/reports", label: "Reports", icon: <HugeiconsIcon icon={DocumentValidationIcon} size={18} /> },
 ];
 
 const userLinks = [
-  { href: "/portal", label: "My Account", icon: "🏦" },
-  { href: "/portal/send", label: "Send Money", icon: "💸" },
-  { href: "/portal/history", label: "History", icon: "📋" },
+  { href: "/portal", label: "My Account", icon: <HugeiconsIcon icon={BankIcon} size={18} /> },
+  { href: "/portal/send", label: "Send Money", icon: <HugeiconsIcon icon={MoneySend01Icon} size={18} /> },
+  { href: "/portal/history", label: "History", icon: <HugeiconsIcon icon={Task01Icon} size={18} /> },
 ];
 
 export function AppShell({ children, role }: AppShellProps) {

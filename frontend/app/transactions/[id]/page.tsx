@@ -12,6 +12,9 @@ import { getTransaction, getSARReport } from "@/lib/api";
 import { formatCurrency, formatDate, COUNTRY_NAMES } from "@/lib/format";
 import type { Transaction } from "@/lib/types";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { DocumentValidationIcon, AlertCircleIcon } from "@hugeicons/core-free-icons";
 
 export default function TransactionDetailPage() {
   const params = useParams();
@@ -93,10 +96,13 @@ export default function TransactionDetailPage() {
                     a.href = url;
                     a.download = `SAR_${txn.transaction_id}.json`;
                     a.click();
-                  } catch (e) {}
+                  } catch {
+                    // Silently fail
+                  }
                 }}
               >
-                📄 Generate SAR
+                <HugeiconsIcon icon={DocumentValidationIcon} size={16} className="mr-2" />
+                Generate SAR
               </Button>
             )}
           </div>
@@ -278,8 +284,15 @@ function FlagItem({ label, value }: { label: string; value?: boolean }) {
   return (
     <div className="flex items-center justify-between text-sm">
       <span>{label}</span>
-      <span className={value ? "font-semibold text-red-500" : "text-muted-foreground"}>
-        {value ? "⚠️ YES" : "No"}
+      <span className={cn("flex items-center gap-1 font-semibold", value ? "text-red-500" : "text-muted-foreground")}>
+        {value ? (
+          <>
+            <HugeiconsIcon icon={AlertCircleIcon} size={14} />
+            YES
+          </>
+        ) : (
+          "No"
+        )}
       </span>
     </div>
   );

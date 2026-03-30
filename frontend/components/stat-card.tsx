@@ -2,12 +2,14 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ArrowUp01Icon, ArrowDown01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 
 interface StatCardProps {
   title: string;
   value: string | number;
   subtitle?: string;
-  icon: string;
+  icon: React.ReactNode;
   trend?: "up" | "down" | "neutral";
   trendValue?: string;
   className?: string;
@@ -42,7 +44,7 @@ export function StatCard({
     <Card className={cn("transition-all hover:shadow-md", variantStyles[variant], className)}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        <div className={cn("flex h-9 w-9 items-center justify-center rounded-xl text-lg", iconBg[variant])}>
+        <div className={cn("flex h-9 w-9 items-center justify-center rounded-xl", iconBg[variant])}>
           {icon}
         </div>
       </CardHeader>
@@ -52,13 +54,20 @@ export function StatCard({
           {trend && trendValue && (
             <span
               className={cn(
-                "text-xs font-medium",
+                "flex items-center gap-0.5 text-xs font-medium",
                 trend === "up" && "text-emerald-600",
                 trend === "down" && "text-red-600",
                 trend === "neutral" && "text-muted-foreground"
               )}
             >
-              {trend === "up" ? "↑" : trend === "down" ? "↓" : "→"} {trendValue}
+              {trend === "up" ? (
+                <HugeiconsIcon icon={ArrowUp01Icon} size={12} />
+              ) : trend === "down" ? (
+                <HugeiconsIcon icon={ArrowDown01Icon} size={12} />
+              ) : (
+                <HugeiconsIcon icon={ArrowRight01Icon} size={12} />
+              )}{" "}
+              {trendValue}
             </span>
           )}
           {subtitle && (

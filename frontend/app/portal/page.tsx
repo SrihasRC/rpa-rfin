@@ -13,6 +13,14 @@ import { getTransactions, getDashboardStats } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { DashboardStats, Transaction } from "@/lib/types";
 import Link from "next/link";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { 
+  MoneySend01Icon, 
+  Analytics01Icon, 
+  AlertCircleIcon, 
+  Tick01Icon,
+  ArrowRight01Icon
+} from "@hugeicons/core-free-icons";
 
 export default function PortalPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -83,7 +91,8 @@ export default function PortalPage() {
           </div>
           <Link href="/portal/send">
             <Button size="lg" className="gap-2">
-              💸 Send Money
+              <HugeiconsIcon icon={MoneySend01Icon} size={20} />
+              Send Money
             </Button>
           </Link>
         </div>
@@ -94,20 +103,20 @@ export default function PortalPage() {
             <StatCard
               title="Total Transactions"
               value={stats.total_transactions}
-              icon="📊"
+              icon={<HugeiconsIcon icon={Analytics01Icon} size={20} />}
             />
             <StatCard
               title="Flagged"
               value={stats.total_flagged}
               subtitle="require attention"
-              icon="⚠️"
+              icon={<HugeiconsIcon icon={AlertCircleIcon} size={20} />}
               variant={stats.total_flagged > 0 ? "warning" : "default"}
             />
             <StatCard
               title="Account Status"
               value="Active"
               subtitle="verified"
-              icon="✅"
+              icon={<HugeiconsIcon icon={Tick01Icon} size={20} />}
               variant="success"
             />
           </div>
@@ -121,7 +130,10 @@ export default function PortalPage() {
               <CardDescription>Your latest transaction activity</CardDescription>
             </div>
             <Link href="/portal/history">
-              <Button variant="outline" size="sm">View All →</Button>
+              <Button variant="outline" size="sm" className="gap-2">
+                View All
+                <HugeiconsIcon icon={ArrowRight01Icon} size={14} />
+              </Button>
             </Link>
           </CardHeader>
           <CardContent>

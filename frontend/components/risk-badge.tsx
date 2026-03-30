@@ -1,4 +1,6 @@
 import { cn } from "@/lib/utils";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { CircleIcon } from "@hugeicons/core-free-icons";
 
 interface RiskBadgeProps {
   risk: string;
@@ -15,16 +17,16 @@ export function RiskBadge({ risk, size = "md", className }: RiskBadgeProps) {
     LOW: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-800",
   };
 
+  const iconColors = {
+    HIGH: "text-red-500",
+    MEDIUM: "text-amber-500",
+    LOW: "text-emerald-500",
+  };
+
   const sizes = {
     sm: "text-[10px] px-1.5 py-0.5",
     md: "text-xs px-2 py-0.5",
     lg: "text-sm px-3 py-1",
-  };
-
-  const icons = {
-    HIGH: "🔴",
-    MEDIUM: "🟡",
-    LOW: "🟢",
   };
 
   return (
@@ -36,7 +38,11 @@ export function RiskBadge({ risk, size = "md", className }: RiskBadgeProps) {
         className
       )}
     >
-      <span className="text-[0.6em]">{icons[riskUpper as keyof typeof icons] || "⚪"}</span>
+      <HugeiconsIcon 
+        icon={CircleIcon} 
+        size={size === "sm" ? 8 : size === "md" ? 10 : 12} 
+        className={cn("fill-current", iconColors[riskUpper as keyof typeof iconColors] || "text-gray-400")}
+      />
       {riskUpper}
     </span>
   );

@@ -1,29 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getReport } from "@/lib/api";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { 
+  Task01Icon, 
+  AlertCircleIcon, 
+  SecurityWarningIcon, 
+  Download01Icon 
+} from "@hugeicons/core-free-icons";
 
 const REPORT_TYPES = [
   {
     id: "compliance",
     title: "Full Compliance Report",
     description: "Complete report of all transactions with risk assessments, triggered rules, and explanations.",
-    icon: "📋",
+    icon: <HugeiconsIcon icon={Task01Icon} size={32} className="text-primary" />,
   },
   {
     id: "flagged",
     title: "Flagged Transactions Report",
     description: "Only medium and high risk transactions that require attention or further review.",
-    icon: "⚠️",
+    icon: <HugeiconsIcon icon={AlertCircleIcon} size={32} className="text-amber-500" />,
   },
   {
     id: "sar",
     title: "SAR/STR Report",
     description: "Suspicious Activity Reports for high-risk transactions. For regulatory filing with FinCEN.",
-    icon: "🚨",
+    icon: <HugeiconsIcon icon={SecurityWarningIcon} size={32} className="text-destructive" />,
   },
 ] as const;
 
@@ -55,7 +62,7 @@ export default function ReportsPage() {
           {REPORT_TYPES.map((report) => (
             <Card key={report.id} className="flex flex-col transition-all hover:shadow-md">
               <CardHeader>
-                <div className="mb-2 text-3xl">{report.icon}</div>
+                <div className="mb-2">{report.icon}</div>
                 <CardTitle className="text-lg">{report.title}</CardTitle>
                 <CardDescription>{report.description}</CardDescription>
               </CardHeader>
@@ -72,7 +79,10 @@ export default function ReportsPage() {
                       Generating...
                     </span>
                   ) : (
-                    "📥 Download CSV"
+                    <span className="flex items-center gap-2">
+                      <HugeiconsIcon icon={Download01Icon} size={16} />
+                      Download CSV
+                    </span>
                   )}
                 </Button>
               </CardContent>
