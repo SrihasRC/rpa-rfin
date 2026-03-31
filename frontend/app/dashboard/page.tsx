@@ -4,30 +4,35 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { StatCard } from "@/components/stat-card";
 import { RiskBadge } from "@/components/risk-badge";
+import { TransactionDetailDialog } from "@/components/transaction-detail-dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { getDashboardStats, getTransactions, getReport } from "@/lib/api";
+import { getDashboardStats, getTransactions } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { DashboardStats, Transaction } from "@/lib/types";
 import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { 
-  Download01Icon, 
-  Analytics01Icon, 
-  CircleIcon, 
-  AlertCircleIcon, 
-  ChartLineData01Icon, 
-  Money01Icon 
+import {
+  Download01Icon,
+  Analytics01Icon,
+  CircleIcon,
+  AlertCircleIcon,
+  ChartLineData01Icon,
+  Money01Icon,
+  ArrowRight01Icon,
 } from "@hugeicons/core-free-icons";
+import { getReport } from "@/lib/api";
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentTxns, setRecentTxns] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -46,6 +51,11 @@ export default function DashboardPage() {
     }
     load();
   }, []);
+
+  const handleRowClick = (txn: Transaction) => {
+    setSelectedTxn(txn);
+    setDialogOpen(true);
+  };
 
   if (loading) {
     return (
@@ -162,7 +172,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Risk Distribution Chart Placeholder */}
+        {/* Risk Distribution */}
         {stats && (
           <div className="grid gap-4 lg:grid-cols-2">
             <Card>
@@ -220,10 +230,13 @@ export default function DashboardPage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle className="text-lg">Recent Transactions</CardTitle>
-              <CardDescription>Latest processed transactions with compliance results</CardDescription>
+              <CardDescription>Click a row to view full details</CardDescription>
             </div>
             <Link href="/dashboard/transactions">
-              <Button variant="outline" size="sm">View All →</Button>
+              <Button variant="outline" size="sm" className="gap-1">
+                View All
+                <HugeiconsIcon icon={ArrowRight01Icon} size={14} />
+              </Button>
             </Link>
           </CardHeader>
           <CardContent>
@@ -232,7 +245,7 @@ export default function DashboardPage() {
                 <TableRow>
                   <TableHead>ID</TableHead>
                   <TableHead>Amount</TableHead>
-                  <TableHead>From → To</TableHead>
+                  <TableHead>Route</TableHead>
                   <TableHead>Risk</TableHead>
                   <TableHead>Score</TableHead>
                   <TableHead>Rules</TableHead>
@@ -241,21 +254,22 @@ export default function DashboardPage() {
               </TableHeader>
               <TableBody>
                 {recentTxns.map((txn) => (
-                  <TableRow key={txn.transaction_id} className="cursor-pointer hover:bg-muted/50">
+                  <TableRow
+                    key={txn.transaction_id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleRowClick(txn)}
+                  >
                     <TableCell>
-                      <Link
-                        href={`/transactions/${txn.transaction_id}`}
-                        className="font-mono text-xs text-primary hover:underline"
-                      >
+                      <span className="font-mono text-xs text-primary">
                         {txn.transaction_id.slice(0, 12)}...
-                      </Link>
+                      </span>
                     </TableCell>
                     <TableCell className="font-medium">
                       {formatCurrency(txn.amount, txn.currency)}
                     </TableCell>
                     <TableCell className="text-sm">
                       <span className="font-mono text-xs">{txn.sender_country}</span>
-                      <span className="mx-1 text-muted-foreground">→</span>
+                      <HugeiconsIcon icon={ArrowRight01Icon} size={12} className="mx-1 inline text-muted-foreground" />
                       <span className="font-mono text-xs">{txn.receiver_country}</span>
                     </TableCell>
                     <TableCell>
@@ -284,6 +298,13 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Transaction Detail Dialog */}
+      <TransactionDetailDialog
+        transaction={selectedTxn}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+      />
     </AppShell>
   );
 }

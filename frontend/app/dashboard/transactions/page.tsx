@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { RiskBadge } from "@/components/risk-badge";
+import { TransactionDetailDialog } from "@/components/transaction-detail-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,8 +14,7 @@ import {
 } from "@/components/ui/table";
 import { getTransactions } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/format";
-import type { PaginatedTransactions } from "@/lib/types";
-import Link from "next/link";
+import type { PaginatedTransactions, Transaction } from "@/lib/types";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { CircleIcon, ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 
@@ -23,6 +23,13 @@ export default function TransactionsPage() {
   const [page, setPage] = useState(1);
   const [riskFilter, setRiskFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
+  const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  const handleRowClick = (txn: Transaction) => {
+    setSelectedTxn(txn);
+    setDialogOpen(true);
+  };
 
   useEffect(() => {
     async function load() {
@@ -123,14 +130,11 @@ export default function TransactionsPage() {
                   ))
                 ) : (
                   data?.transactions.map((txn) => (
-                    <TableRow key={txn.transaction_id} className="cursor-pointer hover:bg-muted/50">
+                    <TableRow key={txn.transaction_id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleRowClick(txn)}>
                       <TableCell>
-                        <Link
-                          href={`/transactions/${txn.transaction_id}`}
-                          className="font-mono text-xs text-primary hover:underline"
-                        >
+                        <span className="font-mono text-xs text-primary">
                           {txn.transaction_id}
-                        </Link>
+                        </span>
                       </TableCell>
                       <TableCell className="font-medium">
                         {formatCurrency(txn.amount, txn.currency)}
@@ -197,6 +201,12 @@ export default function TransactionsPage() {
           </div>
         )}
       </div>
+
+      <TransactionDetailDialog
+        transaction={selectedTxn}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+      />
     </AppShell>
   );
 }

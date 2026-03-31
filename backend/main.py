@@ -44,9 +44,15 @@ async def root():
         "docs": "/docs",
         "endpoints": {
             "compliance_check": "/api/compliance-check",
+            "batch_check": "/api/compliance-check/batch",
             "transactions": "/api/transactions",
+            "send_transaction": "/api/transactions/send",
             "dashboard": "/api/dashboard/stats",
             "reports": "/api/reports/{type}",
+            "sar_json": "/api/reports/sar/{transaction_id}",
+            "sar_pdf": "/api/reports/sar/{transaction_id}/pdf",
+            "uipath_csv_download": "/api/uipath/transactions/csv",
+            "uipath_csv_check": "/api/uipath/compliance-check/csv",
         },
     }
 

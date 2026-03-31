@@ -9,7 +9,7 @@ import os
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, UploadFile, File
 from fastapi.responses import StreamingResponse
 
 from api.schemas import (
@@ -23,6 +23,7 @@ from api.schemas import (
 from engine.compliance import run_compliance_check
 from config import CURRENCY_TO_USD
 from supabase_client import get_supabase_client
+from api.sar_pdf import generate_sar_pdf
 
 router = APIRouter(prefix="/api")
 
@@ -152,25 +153,58 @@ async def send_transaction(
     txn: UserTransactionInput,
     sender_id: str = Query(..., description="Current user's account ID"),
 ):
-    """Send a transaction (user portal). Automatically runs compliance check."""
-    # Build full transaction data
-    txn_data = TransactionInput(
-        transaction_id=f"TXN_{uuid.uuid4().hex[:12].upper()}",
-        amount=txn.amount,
-        currency=txn.currency,
-        sender_id=sender_id,
-        sender_country="US",  # Default; in real app comes from user profile
-        receiver_id=txn.receiver_id,
-        receiver_name=txn.receiver_name,
-        receiver_country=txn.receiver_country,
-        transaction_type=txn.transaction_type,
-    )
+    """
+    Send a transaction (user portal).
+    Realistic flow: transaction is submitted first, then compliance check runs
+    in the background (simulated synchronously here), and the result is stored.
+    The user sees the transaction as 'submitted' — not the compliance internals.
+    """
+    txn_id = f"TXN_{uuid.uuid4().hex[:12].upper()}"
+    timestamp = datetime.utcnow().isoformat()
 
-    # Run compliance check
-    result = await compliance_check(txn_data)
+    # Build full transaction data
+    txn_dict = {
+        "transaction_id": txn_id,
+        "amount": txn.amount,
+        "currency": txn.currency,
+        "timestamp": timestamp,
+        "sender_id": sender_id,
+        "sender_name": None,
+        "sender_country": "US",
+        "sender_account_age_days": 365,
+        "receiver_id": txn.receiver_id,
+        "receiver_name": txn.receiver_name,
+        "receiver_country": txn.receiver_country,
+        "transaction_type": txn.transaction_type,
+        "kyc_status": "verified",
+        "is_sanctioned_entity": False,
+        "is_pep": False,
+        "txn_count_last_24h": 0,
+        "txn_count_last_7d": 0,
+        "txn_count_last_30d": 0,
+        "avg_txn_amount_30d": 0,
+        "same_beneficiary_count_7d": 0,
+        "days_since_last_txn": 0,
+        "is_round_amount": txn.amount % 1000 == 0 and txn.amount >= 1000,
+    }
+
+    # Run compliance check (simulates background processing)
+    result = run_compliance_check(txn_dict)
+
+    # Store in database
+    try:
+        await _store_compliance_result(txn_dict, result)
+    except Exception as e:
+        print(f"Warning: Could not store transaction: {e}")
+
     return {
-        "message": "Transaction submitted and compliance check completed",
-        "result": result,
+        "message": "Transaction submitted successfully",
+        "transaction_id": txn_id,
+        "amount": txn.amount,
+        "currency": txn.currency,
+        "receiver_name": txn.receiver_name,
+        "timestamp": timestamp,
+        "status": "completed",
     }
 
 
@@ -272,7 +306,7 @@ async def generate_report(
 
 @router.get("/reports/sar/{transaction_id}")
 async def generate_sar_report(transaction_id: str):
-    """Generate a SAR/STR report for a specific transaction."""
+    """Generate a SAR/STR report for a specific transaction (JSON)."""
     try:
         supabase = get_supabase_client()
         response = (
@@ -312,6 +346,125 @@ async def generate_sar_report(transaction_id: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"SAR generation error: {str(e)}")
+
+
+@router.get("/reports/sar/{transaction_id}/pdf")
+async def generate_sar_pdf_report(transaction_id: str):
+    """Generate and download a SAR/STR PDF report for a specific transaction."""
+    try:
+        supabase = get_supabase_client()
+        response = (
+            supabase.table("transactions")
+            .select("*")
+            .eq("transaction_id", transaction_id)
+            .single()
+            .execute()
+        )
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Transaction not found")
+
+        txn = response.data
+        pdf_buf = generate_sar_pdf(txn)
+
+        return StreamingResponse(
+            pdf_buf,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="SAR_{transaction_id}.pdf"',
+            },
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"SAR PDF generation error: {str(e)}")
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# UIPATH CONVENIENCE ENDPOINTS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+@router.get("/uipath/transactions/csv")
+async def uipath_download_transactions_csv():
+    """Download all transactions as CSV (for UiPath Read CSV activity)."""
+    try:
+        supabase = get_supabase_client()
+        response = supabase.table("transactions").select("*").execute()
+        data = response.data or []
+        return _generate_csv_response(data, "all_transactions")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/uipath/compliance-check/csv")
+async def uipath_csv_compliance_check(file: UploadFile = File(...)):
+    """
+    Upload a CSV of transactions, run compliance checks, return results as CSV.
+    For UiPath: HTTP Request upload -> get results CSV back.
+    """
+    try:
+        content = await file.read()
+        text = content.decode("utf-8")
+        reader = csv.DictReader(io.StringIO(text))
+
+        results_data = []
+        for row in reader:
+            # Build transaction dict from CSV row
+            txn_dict = {
+                "transaction_id": row.get("transaction_id", f"TXN_{uuid.uuid4().hex[:12].upper()}"),
+                "amount": float(row.get("amount", 0)),
+                "currency": row.get("currency", "USD"),
+                "timestamp": row.get("timestamp", datetime.utcnow().isoformat()),
+                "sender_id": row.get("sender_id", ""),
+                "sender_name": row.get("sender_name"),
+                "sender_country": row.get("sender_country", "US"),
+                "sender_account_age_days": int(float(row.get("sender_account_age_days", 365))),
+                "receiver_id": row.get("receiver_id", ""),
+                "receiver_name": row.get("receiver_name"),
+                "receiver_country": row.get("receiver_country", "US"),
+                "transaction_type": row.get("transaction_type", "wire_transfer"),
+                "kyc_status": row.get("kyc_status", "verified"),
+                "is_sanctioned_entity": row.get("is_sanctioned_entity", "").lower() == "true",
+                "is_pep": row.get("is_pep", "").lower() == "true",
+                "txn_count_last_24h": int(float(row.get("txn_count_last_24h", 0))),
+                "txn_count_last_7d": int(float(row.get("txn_count_last_7d", 0))),
+                "txn_count_last_30d": int(float(row.get("txn_count_last_30d", 0))),
+                "avg_txn_amount_30d": float(row.get("avg_txn_amount_30d", 0)),
+                "same_beneficiary_count_7d": int(float(row.get("same_beneficiary_count_7d", 0))),
+                "days_since_last_txn": int(float(row.get("days_since_last_txn", 0))),
+                "is_round_amount": row.get("is_round_amount", "").lower() == "true",
+            }
+
+            result = run_compliance_check(txn_dict)
+            results_data.append({
+                "transaction_id": result["transaction_id"],
+                "amount": txn_dict["amount"],
+                "currency": txn_dict["currency"],
+                "final_risk": result["final_risk"],
+                "risk_score": result["risk_score"],
+                "rules_count": result["rules_count"],
+                "explanation": result["explanation"]["summary"],
+            })
+
+        # Return as CSV
+        if not results_data:
+            return StreamingResponse(
+                io.StringIO("No records processed"),
+                media_type="text/csv",
+            )
+
+        output = io.StringIO()
+        writer = csv.DictWriter(output, fieldnames=results_data[0].keys())
+        writer.writeheader()
+        writer.writerows(results_data)
+        output.seek(0)
+
+        return StreamingResponse(
+            output,
+            media_type="text/csv",
+            headers={"Content-Disposition": 'attachment; filename="compliance_results.csv"'},
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"CSV processing error: {str(e)}")
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

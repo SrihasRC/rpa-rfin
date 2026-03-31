@@ -7,7 +7,6 @@ import type {
   DashboardStats,
   PaginatedTransactions,
   Transaction,
-  TransactionInput,
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -80,10 +79,29 @@ export async function getTransaction(id: string): Promise<Transaction> {
   return apiFetch<Transaction>(`/api/transactions/${id}`);
 }
 
+export interface SendTransactionResponse {
+  message: string;
+  transaction_id: string;
+  amount: number;
+  currency: string;
+  receiver_name?: string;
+  timestamp: string;
+  status: string;
+}
+
 export async function sendTransaction(
-  txn: TransactionInput,
+  txn: {
+    amount: number;
+    currency: string;
+    sender_id: string;
+    sender_country: string;
+    receiver_id: string;
+    receiver_name?: string;
+    receiver_country: string;
+    transaction_type: string;
+  },
   senderId: string
-): Promise<{ message: string; result: ComplianceResult }> {
+): Promise<SendTransactionResponse> {
   return apiFetch(`/api/transactions/send?sender_id=${encodeURIComponent(senderId)}`, {
     method: "POST",
     body: JSON.stringify(txn),
@@ -121,4 +139,18 @@ export async function getReport(
 
 export async function getSARReport(transactionId: string) {
   return apiFetch(`/api/reports/sar/${transactionId}`);
+}
+
+export async function downloadSARPdf(transactionId: string) {
+  const res = await fetch(
+    `${API_BASE}/api/reports/sar/${transactionId}/pdf`
+  );
+  if (!res.ok) throw new Error("SAR PDF generation failed");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `SAR_${transactionId}.pdf`;
+  a.click();
+  URL.revokeObjectURL(url);
 }

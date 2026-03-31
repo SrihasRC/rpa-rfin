@@ -81,7 +81,7 @@ def generate_transactions() -> list[dict]:
     # Track per-account transaction history for behavioral features
     account_history: dict[str, list[dict]] = {}
 
-    base_time = datetime(2025, 1, 1, 8, 0, 0)
+    base_time = datetime(2025, 10, 1, 8, 0, 0)
     transactions = []
 
     for i in range(NUM_TRANSACTIONS):
