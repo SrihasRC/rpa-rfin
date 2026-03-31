@@ -31,6 +31,40 @@ async function apiFetch<T>(
   return res.json();
 }
 
+// --- Auth ---
+
+export interface User {
+  account_id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  country: string;
+  role: "user" | "admin";
+  kyc_status: string;
+  account_age_days: number;
+  balance: number;
+}
+
+export interface LoginResponse {
+  success: boolean;
+  user: User;
+}
+
+export async function login(email: string, password: string): Promise<LoginResponse> {
+  return apiFetch<LoginResponse>("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export async function getUser(accountId: string): Promise<User> {
+  return apiFetch<User>(`/api/auth/user/${accountId}`);
+}
+
+export async function listUsers(): Promise<{ users: User[] }> {
+  return apiFetch<{ users: User[] }>("/api/users");
+}
+
 // --- Compliance Check ---
 
 export async function complianceCheck(
@@ -59,6 +93,7 @@ export async function getTransactions(params?: {
   risk_filter?: string;
   sort_by?: string;
   sort_order?: string;
+  user_id?: string;
 }): Promise<PaginatedTransactions> {
   const searchParams = new URLSearchParams();
   if (params?.page) searchParams.set("page", String(params.page));
@@ -68,6 +103,7 @@ export async function getTransactions(params?: {
     searchParams.set("risk_filter", params.risk_filter);
   if (params?.sort_by) searchParams.set("sort_by", params.sort_by);
   if (params?.sort_order) searchParams.set("sort_order", params.sort_order);
+  if (params?.user_id) searchParams.set("user_id", params.user_id);
 
   const qs = searchParams.toString();
   return apiFetch<PaginatedTransactions>(
@@ -80,6 +116,7 @@ export async function getTransaction(id: string): Promise<Transaction> {
 }
 
 export interface SendTransactionResponse {
+  success: boolean;
   message: string;
   transaction_id: string;
   amount: number;
@@ -87,14 +124,18 @@ export interface SendTransactionResponse {
   receiver_name?: string;
   timestamp: string;
   status: string;
+  compliance: {
+    risk_level: string;
+    risk_score: number;
+    rules_triggered: number;
+  };
+  new_balance: number;
 }
 
 export async function sendTransaction(
   txn: {
     amount: number;
     currency: string;
-    sender_id: string;
-    sender_country: string;
     receiver_id: string;
     receiver_name?: string;
     receiver_country: string;
@@ -110,8 +151,9 @@ export async function sendTransaction(
 
 // --- Dashboard ---
 
-export async function getDashboardStats(): Promise<DashboardStats> {
-  return apiFetch<DashboardStats>("/api/dashboard/stats");
+export async function getDashboardStats(userId?: string): Promise<DashboardStats> {
+  const qs = userId ? `?user_id=${encodeURIComponent(userId)}` : "";
+  return apiFetch<DashboardStats>(`/api/dashboard/stats${qs}`);
 }
 
 // --- Reports ---

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,17 +11,19 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { sendTransaction } from "@/lib/api";
+import { sendTransaction, type User } from "@/lib/api";
 import { formatCurrency } from "@/lib/format";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   CheckmarkCircle01Icon,
   ArrowRight01Icon,
   MoneySend01Icon,
+  AlertCircleIcon,
+  Wallet01Icon,
 } from "@hugeicons/core-free-icons";
 
 const CURRENCIES = ["USD", "INR", "EUR", "GBP", "JPY", "AUD", "CAD", "SGD", "AED", "CHF"];
-const TXN_TYPES = ["wire_transfer", "ach", "card_payment", "cash_deposit", "internal_transfer"];
+const TXN_TYPES = ["wire_transfer", "ach", "card_payment", "internal_transfer"];
 
 interface SendResult {
   transaction_id: string;
@@ -29,10 +31,13 @@ interface SendResult {
   currency: string;
   receiver_name?: string;
   timestamp: string;
+  risk_level: string;
+  new_balance: number;
 }
 
 export default function SendMoneyPage() {
   const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
   const [currency, setCurrency] = useState("USD");
   const [amount, setAmount] = useState("");
   const [receiverId, setReceiverId] = useState("");
@@ -43,8 +48,24 @@ export default function SendMoneyPage() {
   const [result, setResult] = useState<SendResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (!storedUser) {
+      router.push("/login");
+      return;
+    }
+    const userData = JSON.parse(storedUser) as User;
+    if (userData.role === "admin") {
+      router.push("/dashboard");
+      return;
+    }
+    setUser(userData);
+  }, [router]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
+
     setSending(true);
     setError(null);
     setResult(null);
@@ -54,21 +75,27 @@ export default function SendMoneyPage() {
         {
           amount: parseFloat(amount),
           currency,
-          sender_id: "ACC_12345678",
-          sender_country: "US",
           receiver_id: receiverId,
           receiver_name: receiverName,
           receiver_country: receiverCountry,
           transaction_type: txnType,
         },
-        "ACC_12345678"
+        user.account_id
       );
+      
+      // Update user balance in localStorage
+      const updatedUser = { ...user, balance: res.new_balance };
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+      setUser(updatedUser);
+
       setResult({
         transaction_id: res.transaction_id,
         amount: res.amount,
         currency: res.currency,
         receiver_name: res.receiver_name,
         timestamp: res.timestamp,
+        risk_level: res.compliance.risk_level,
+        new_balance: res.new_balance,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Transaction failed");
@@ -77,14 +104,33 @@ export default function SendMoneyPage() {
     }
   };
 
+  if (!user) {
+    return (
+      <AppShell role="user" user={null}>
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        </div>
+      </AppShell>
+    );
+  }
+
   return (
-    <AppShell role="user">
+    <AppShell role="user" user={user}>
       <div className="mx-auto max-w-2xl space-y-6">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Send Money</h2>
-          <p className="text-muted-foreground">
-            Transfer funds securely. All transactions are processed and monitored for compliance.
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">Send Money</h2>
+            <p className="text-muted-foreground">
+              Transfer funds securely. All transactions are compliance-checked.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 rounded-lg bg-muted/50 px-4 py-2">
+            <HugeiconsIcon icon={Wallet01Icon} size={18} className="text-muted-foreground" />
+            <div className="text-right">
+              <p className="text-xs text-muted-foreground">Balance</p>
+              <p className="font-semibold">{formatCurrency(user.balance, "USD")}</p>
+            </div>
+          </div>
         </div>
 
         {/* Success State */}
@@ -98,15 +144,15 @@ export default function SendMoneyPage() {
                   className="text-emerald-500"
                 />
                 <div>
-                  <h3 className="text-xl font-bold">Transaction Submitted</h3>
+                  <h3 className="text-xl font-bold">Transaction Completed</h3>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Your transfer is being processed. Compliance checks run automatically in the background.
+                    Your transfer has been processed and compliance-checked.
                   </p>
                 </div>
 
                 <Separator />
 
-                <div className="grid w-full gap-2 text-left sm:grid-cols-2">
+                <div className="grid w-full gap-3 text-left sm:grid-cols-2">
                   <div>
                     <p className="text-xs text-muted-foreground">Transaction ID</p>
                     <p className="font-mono text-sm">{result.transaction_id}</p>
@@ -122,8 +168,21 @@ export default function SendMoneyPage() {
                     <p className="text-sm">{result.receiver_name || receiverId}</p>
                   </div>
                   <div>
+                    <p className="text-xs text-muted-foreground">Risk Status</p>
+                    <p className={`text-sm font-medium ${
+                      result.risk_level === "LOW" ? "text-emerald-600" :
+                      result.risk_level === "MEDIUM" ? "text-amber-600" : "text-red-600"
+                    }`}>
+                      {result.risk_level}
+                    </p>
+                  </div>
+                  <div>
                     <p className="text-xs text-muted-foreground">Date</p>
                     <p className="text-sm">{new Date(result.timestamp).toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">New Balance</p>
+                    <p className="text-sm font-medium">{formatCurrency(result.new_balance, "USD")}</p>
                   </div>
                 </div>
 
@@ -171,12 +230,16 @@ export default function SendMoneyPage() {
                       type="number"
                       step="0.01"
                       min="1"
+                      max={user.balance}
                       placeholder="0.00"
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
                       required
                       className="text-lg font-medium"
                     />
+                    {parseFloat(amount) > user.balance && (
+                      <p className="text-xs text-destructive">Exceeds available balance</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label>Currency</Label>
@@ -246,11 +309,16 @@ export default function SendMoneyPage() {
                   </div>
                 </div>
 
-                <Button type="submit" className="w-full" size="lg" disabled={sending}>
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  size="lg" 
+                  disabled={sending || parseFloat(amount) > user.balance || !amount}
+                >
                   {sending ? (
                     <span className="flex items-center gap-2">
                       <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                      Submitting transfer...
+                      Processing...
                     </span>
                   ) : (
                     <span className="flex items-center gap-2">
@@ -268,7 +336,10 @@ export default function SendMoneyPage() {
         {error && (
           <Card className="border-destructive/50">
             <CardContent className="pt-6">
-              <p className="text-sm text-destructive">{error}</p>
+              <div className="flex items-center gap-2 text-destructive">
+                <HugeiconsIcon icon={AlertCircleIcon} size={18} />
+                <p className="text-sm">{error}</p>
+              </div>
             </CardContent>
           </Card>
         )}

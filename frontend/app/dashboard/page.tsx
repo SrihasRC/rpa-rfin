@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { StatCard } from "@/components/stat-card";
 import { RiskBadge } from "@/components/risk-badge";
@@ -10,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { getDashboardStats, getTransactions } from "@/lib/api";
+import { getDashboardStats, getTransactions, type User } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { DashboardStats, Transaction } from "@/lib/types";
 import Link from "next/link";
@@ -27,6 +28,8 @@ import {
 import { getReport } from "@/lib/api";
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentTxns, setRecentTxns] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,10 +38,24 @@ export default function DashboardPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
+    // Check if user is logged in
+    const storedUser = localStorage.getItem("user");
+    if (!storedUser) {
+      router.push("/login");
+      return;
+    }
+
+    const userData = JSON.parse(storedUser) as User;
+    if (userData.role !== "admin") {
+      router.push("/portal");
+      return;
+    }
+    setUser(userData);
+
     async function load() {
       try {
         const [s, t] = await Promise.all([
-          getDashboardStats(),
+          getDashboardStats(), // Admin sees all transactions
           getTransactions({ page: 1, page_size: 10, sort_by: "timestamp", sort_order: "desc" }),
         ]);
         setStats(s);
@@ -50,16 +67,16 @@ export default function DashboardPage() {
       }
     }
     load();
-  }, []);
+  }, [router]);
 
   const handleRowClick = (txn: Transaction) => {
     setSelectedTxn(txn);
     setDialogOpen(true);
   };
 
-  if (loading) {
+  if (loading || !user) {
     return (
-      <AppShell role="admin">
+      <AppShell role="admin" user={user}>
         <div className="flex min-h-[50vh] items-center justify-center">
           <div className="text-center">
             <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -72,7 +89,7 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <AppShell role="admin">
+      <AppShell role="admin" user={user}>
         <div className="flex min-h-[50vh] items-center justify-center">
           <Card className="max-w-md border-destructive/50">
             <CardHeader>
@@ -94,7 +111,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <AppShell role="admin">
+    <AppShell role="admin" user={user}>
       <div className="space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">

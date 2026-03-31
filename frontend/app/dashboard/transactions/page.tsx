@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { RiskBadge } from "@/components/risk-badge";
 import { TransactionDetailDialog } from "@/components/transaction-detail-dialog";
@@ -12,13 +13,15 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { getTransactions } from "@/lib/api";
+import { getTransactions, type User } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { PaginatedTransactions, Transaction } from "@/lib/types";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { CircleIcon, ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 
 export default function TransactionsPage() {
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
   const [data, setData] = useState<PaginatedTransactions | null>(null);
   const [page, setPage] = useState(1);
   const [riskFilter, setRiskFilter] = useState<string>("all");
@@ -26,12 +29,28 @@ export default function TransactionsPage() {
   const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (!storedUser) {
+      router.push("/login");
+      return;
+    }
+    const userData = JSON.parse(storedUser) as User;
+    if (userData.role !== "admin") {
+      router.push("/portal");
+      return;
+    }
+    setUser(userData);
+  }, [router]);
+
   const handleRowClick = (txn: Transaction) => {
     setSelectedTxn(txn);
     setDialogOpen(true);
   };
 
   useEffect(() => {
+    if (!user) return;
+
     async function load() {
       setLoading(true);
       try {
@@ -53,10 +72,20 @@ export default function TransactionsPage() {
       }
     }
     load();
-  }, [page, riskFilter]);
+  }, [page, riskFilter, user]);
+
+  if (!user) {
+    return (
+      <AppShell role="admin" user={null}>
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
-    <AppShell role="admin">
+    <AppShell role="admin" user={user}>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>

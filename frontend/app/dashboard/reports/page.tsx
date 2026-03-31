@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { getReport } from "@/lib/api";
+import { getReport, type User } from "@/lib/api";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { 
   Task01Icon, 
@@ -35,7 +36,23 @@ const REPORT_TYPES = [
 ] as const;
 
 export default function ReportsPage() {
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (!storedUser) {
+      router.push("/login");
+      return;
+    }
+    const userData = JSON.parse(storedUser) as User;
+    if (userData.role !== "admin") {
+      router.push("/portal");
+      return;
+    }
+    setUser(userData);
+  }, [router]);
 
   const handleDownload = async (type: string) => {
     setDownloading(type);
@@ -48,8 +65,18 @@ export default function ReportsPage() {
     }
   };
 
+  if (!user) {
+    return (
+      <AppShell role="admin" user={null}>
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        </div>
+      </AppShell>
+    );
+  }
+
   return (
-    <AppShell role="admin">
+    <AppShell role="admin" user={user}>
       <div className="space-y-6">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Reports</h2>

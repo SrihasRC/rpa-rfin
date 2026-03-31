@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { RiskBadge } from "@/components/risk-badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,21 +12,38 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { getTransactions } from "@/lib/api";
+import { getTransactions, type User } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { PaginatedTransactions } from "@/lib/types";
 import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { CircleIcon, ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
-import { cn } from "@/lib/utils";
 
 export default function HistoryPage() {
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
   const [data, setData] = useState<PaginatedTransactions | null>(null);
   const [page, setPage] = useState(1);
   const [riskFilter, setRiskFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (!storedUser) {
+      router.push("/login");
+      return;
+    }
+    const userData = JSON.parse(storedUser) as User;
+    if (userData.role === "admin") {
+      router.push("/dashboard");
+      return;
+    }
+    setUser(userData);
+  }, [router]);
+
+  useEffect(() => {
+    if (!user) return;
+
     async function load() {
       setLoading(true);
       try {
@@ -34,6 +52,7 @@ export default function HistoryPage() {
           page_size: 15,
           sort_by: "timestamp",
           sort_order: "desc",
+          user_id: user!.account_id,
         };
         if (riskFilter !== "all") params.risk_filter = riskFilter;
         const result = await getTransactions(params as Parameters<typeof getTransactions>[0]);
@@ -45,14 +64,24 @@ export default function HistoryPage() {
       }
     }
     load();
-  }, [page, riskFilter]);
+  }, [page, riskFilter, user]);
+
+  if (!user) {
+    return (
+      <AppShell role="user" user={null}>
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
-    <AppShell role="user">
+    <AppShell role="user" user={user}>
       <div className="space-y-6">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Transaction History</h2>
-          <p className="text-muted-foreground">Complete record of all your transactions</p>
+          <p className="text-muted-foreground">Complete record of your transactions</p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -141,6 +170,13 @@ export default function HistoryPage() {
                       </TableCell>
                     </TableRow>
                   ))
+                )}
+                {!loading && data?.transactions.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                      No transactions found. Send your first transfer!
+                    </TableCell>
+                  </TableRow>
                 )}
               </TableBody>
             </Table>

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import type { User } from "@/lib/api";
 
 import { HugeiconsIcon } from "@hugeicons/react";
 import { 
@@ -12,12 +13,16 @@ import {
   Task01Icon, 
   DocumentValidationIcon, 
   BankIcon, 
-  MoneySend01Icon 
+  MoneySend01Icon,
+  ShieldCheckIcon,
+  Logout01Icon,
+  UserIcon
 } from "@hugeicons/core-free-icons";
 
 interface AppShellProps {
   children: React.ReactNode;
   role: "admin" | "user";
+  user?: User | null;
 }
 
 const adminLinks = [
@@ -32,10 +37,15 @@ const userLinks = [
   { href: "/portal/history", label: "History", icon: <HugeiconsIcon icon={Task01Icon} size={18} /> },
 ];
 
-export function AppShell({ children, role }: AppShellProps) {
+export function AppShell({ children, role, user }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const links = role === "admin" ? adminLinks : userLinks;
+
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    router.push("/login");
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -45,10 +55,7 @@ export function AppShell({ children, role }: AppShellProps) {
           {/* Brand */}
           <Link href={role === "admin" ? "/dashboard" : "/portal"} className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
-                <path d="m9 12 2 2 4-4" />
-              </svg>
+              <HugeiconsIcon icon={ShieldCheckIcon} size={20} />
             </div>
             <div>
               <h1 className="text-sm font-bold leading-none tracking-tight">RegTech CFMS</h1>
@@ -77,8 +84,23 @@ export function AppShell({ children, role }: AppShellProps) {
             ))}
           </nav>
 
-          {/* Right: Role badge + Logout */}
+          {/* Right: User info + Logout */}
           <div className="flex items-center gap-3">
+            {user && (
+              <div className="hidden items-center gap-2 sm:flex">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <HugeiconsIcon icon={UserIcon} size={16} />
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-medium leading-none">
+                    {user.first_name} {user.last_name}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {user.account_id}
+                  </p>
+                </div>
+              </div>
+            )}
             <span className={cn(
               "hidden rounded-full px-3 py-1 text-xs font-medium sm:inline-block",
               role === "admin"
@@ -91,9 +113,10 @@ export function AppShell({ children, role }: AppShellProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => router.push("/login")}
-              className="text-sm text-muted-foreground"
+              onClick={handleLogout}
+              className="gap-2 text-sm text-muted-foreground"
             >
+              <HugeiconsIcon icon={Logout01Icon} size={16} />
               Sign Out
             </Button>
           </div>
@@ -127,10 +150,10 @@ export function AppShell({ children, role }: AppShellProps) {
       <footer className="border-t border-border/30 bg-muted/30">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
           <p className="text-xs text-muted-foreground">
-            © 2025 RegTech CFMS — AML/KYC Compliance Engine
+            2025 RegTech CFMS - AML/KYC Compliance Engine
           </p>
           <p className="text-xs text-muted-foreground">
-            FATF · BSA · OFAC · KYC
+            FATF | BSA | OFAC | KYC
           </p>
         </div>
       </footer>

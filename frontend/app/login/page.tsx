@@ -7,35 +7,69 @@ import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { login } from "@/lib/api";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ShieldCheckIcon, AlertCircleIcon } from "@hugeicons/core-free-icons";
 
 
 export default function LoginPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("user");
+  const [error, setError] = useState<string | null>(null);
 
-  const handleAdminLogin = (e: React.FormEvent) => {
+  // User login form state
+  const [userEmail, setUserEmail] = useState("john@example.com");
+  const [userPassword, setUserPassword] = useState("demo1234");
+
+  // Admin login form state
+  const [adminEmail, setAdminEmail] = useState("admin@regtech.com");
+  const [adminPassword, setAdminPassword] = useState("admin1234");
+
+  const handleUserLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setTimeout(() => {
-      router.push("/dashboard");
-    }, 500);
+    setError(null);
+
+    try {
+      const response = await login(userEmail, userPassword);
+      if (response.success && response.user) {
+        // Store user in localStorage
+        localStorage.setItem("user", JSON.stringify(response.user));
+        router.push("/portal");
+      } else {
+        setError("Login failed. Please check your credentials.");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleUserLogin = (e: React.FormEvent) => {
+  const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setTimeout(() => {
-      router.push("/portal");
-    }, 500);
-  };
+    setError(null);
 
-  const handleSignup = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setTimeout(() => {
-      router.push("/portal");
-    }, 800);
+    try {
+      const response = await login(adminEmail, adminPassword);
+      if (response.success && response.user) {
+        if (response.user.role !== "admin") {
+          setError("This account does not have admin access.");
+          return;
+        }
+        // Store user in localStorage
+        localStorage.setItem("user", JSON.stringify(response.user));
+        router.push("/dashboard");
+      } else {
+        setError("Login failed. Please check your credentials.");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -50,10 +84,7 @@ export default function LoginPage() {
         {/* Logo / Brand */}
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
-              <path d="m9 12 2 2 4-4" />
-            </svg>
+            <HugeiconsIcon icon={ShieldCheckIcon} size={32} />
           </div>
           <h1 className="text-2xl font-bold tracking-tight">RegTech CFMS</h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -62,28 +93,38 @@ export default function LoginPage() {
         </div>
 
         <Card className="border-border/50 shadow-xl">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setError(null); }} className="w-full">
             <CardHeader className="pb-3">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="user">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
-                <TabsTrigger value="admin">Admin</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="user">User Login</TabsTrigger>
+                <TabsTrigger value="admin">Admin Login</TabsTrigger>
               </TabsList>
             </CardHeader>
+
+            {/* Error Message */}
+            {error && (
+              <div className="mx-6 mb-2 flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+                <HugeiconsIcon icon={AlertCircleIcon} size={16} />
+                {error}
+              </div>
+            )}
 
             {/* User Login */}
             <TabsContent value="user" className="mt-0">
               <form onSubmit={handleUserLogin}>
                 <CardContent className="space-y-4 pt-0">
                   <CardDescription>
-                    Access your account to view transactions and send transfers.
+                    Access your banking portal to view transactions and send transfers.
                   </CardDescription>
                   <div className="space-y-2">
-                    <Label htmlFor="user-id">Account ID</Label>
+                    <Label htmlFor="user-email">Email</Label>
                     <Input
-                      id="user-id"
-                      placeholder="ACC_XXXXXXXX"
-                      defaultValue="ACC_12345678"
+                      id="user-email"
+                      type="email"
+                      placeholder="your@email.com"
+                      value={userEmail}
+                      onChange={(e) => setUserEmail(e.target.value)}
+                      required
                     />
                   </div>
                   <div className="space-y-2">
@@ -91,8 +132,10 @@ export default function LoginPage() {
                     <Input
                       id="user-pass"
                       type="password"
-                      placeholder="••••••••"
-                      defaultValue="demo1234"
+                      placeholder="Enter password"
+                      value={userPassword}
+                      onChange={(e) => setUserPassword(e.target.value)}
+                      required
                     />
                   </div>
                   <Button
@@ -109,87 +152,12 @@ export default function LoginPage() {
                       "Sign In"
                     )}
                   </Button>
-                  <p className="text-center text-xs text-muted-foreground">
-                    Demo mode — any credentials work
-                  </p>
-                </CardContent>
-              </form>
-            </TabsContent>
-
-            {/* Sign Up */}
-            <TabsContent value="signup" className="mt-0">
-              <form onSubmit={handleSignup}>
-                <CardContent className="space-y-4 pt-0">
-                  <CardDescription>
-                    Create a new banking account. KYC verification is simulated.
-                  </CardDescription>
-                  <div className="grid gap-4 grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-first">First Name</Label>
-                      <Input
-                        id="signup-first"
-                        placeholder="John"
-                        defaultValue="John"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-last">Last Name</Label>
-                      <Input
-                        id="signup-last"
-                        placeholder="Doe"
-                        defaultValue="Doe"
-                        required
-                      />
-                    </div>
+                  <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
+                    <p className="font-medium mb-1">Demo Accounts:</p>
+                    <p>john@example.com / demo1234</p>
+                    <p>jane@example.com / demo1234</p>
+                    <p>raj@example.com / demo1234</p>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      placeholder="john@example.com"
-                      defaultValue="john@example.com"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-country">Country Code</Label>
-                    <Input
-                      id="signup-country"
-                      placeholder="US"
-                      defaultValue="US"
-                      maxLength={2}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-pass">Password</Label>
-                    <Input
-                      id="signup-pass"
-                      type="password"
-                      placeholder="••••••••"
-                      defaultValue="demo1234"
-                      required
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <span className="flex items-center gap-2">
-                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                        Creating account...
-                      </span>
-                    ) : (
-                      "Create Account"
-                    )}
-                  </Button>
-                  <p className="text-center text-xs text-muted-foreground">
-                    Demo mode — account creation is simulated
-                  </p>
                 </CardContent>
               </form>
             </TabsContent>
@@ -199,7 +167,7 @@ export default function LoginPage() {
               <form onSubmit={handleAdminLogin}>
                 <CardContent className="space-y-4 pt-0">
                   <CardDescription>
-                    Compliance officer dashboard — monitor, review, and generate reports.
+                    Compliance officer dashboard for monitoring and reports.
                   </CardDescription>
                   <div className="space-y-2">
                     <Label htmlFor="admin-email">Email</Label>
@@ -207,7 +175,9 @@ export default function LoginPage() {
                       id="admin-email"
                       type="email"
                       placeholder="admin@regtech.com"
-                      defaultValue="admin@regtech.com"
+                      value={adminEmail}
+                      onChange={(e) => setAdminEmail(e.target.value)}
+                      required
                     />
                   </div>
                   <div className="space-y-2">
@@ -215,8 +185,10 @@ export default function LoginPage() {
                     <Input
                       id="admin-pass"
                       type="password"
-                      placeholder="••••••••"
-                      defaultValue="admin1234"
+                      placeholder="Enter password"
+                      value={adminPassword}
+                      onChange={(e) => setAdminPassword(e.target.value)}
+                      required
                     />
                   </div>
                   <Button
@@ -233,9 +205,10 @@ export default function LoginPage() {
                       "Access Dashboard"
                     )}
                   </Button>
-                  <p className="text-center text-xs text-muted-foreground">
-                    Demo mode — any credentials work
-                  </p>
+                  <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
+                    <p className="font-medium mb-1">Admin Account:</p>
+                    <p>admin@regtech.com / admin1234</p>
+                  </div>
                 </CardContent>
               </form>
             </TabsContent>
@@ -243,7 +216,7 @@ export default function LoginPage() {
         </Card>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          Protected by RegTech CFMS &middot; AML/KYC Compliance Engine v1.0
+          Protected by RegTech CFMS - AML/KYC Compliance Engine v1.0
         </p>
       </div>
     </div>

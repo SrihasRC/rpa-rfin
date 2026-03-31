@@ -43,16 +43,35 @@ async def root():
         "status": "running",
         "docs": "/docs",
         "endpoints": {
-            "compliance_check": "/api/compliance-check",
-            "batch_check": "/api/compliance-check/batch",
-            "transactions": "/api/transactions",
-            "send_transaction": "/api/transactions/send",
-            "dashboard": "/api/dashboard/stats",
-            "reports": "/api/reports/{type}",
-            "sar_json": "/api/reports/sar/{transaction_id}",
-            "sar_pdf": "/api/reports/sar/{transaction_id}/pdf",
-            "uipath_csv_download": "/api/uipath/transactions/csv",
-            "uipath_csv_check": "/api/uipath/compliance-check/csv",
+            "auth": {
+                "login": "POST /api/auth/login",
+                "get_user": "GET /api/auth/user/{account_id}",
+                "list_users": "GET /api/users",
+            },
+            "compliance": {
+                "check_single": "POST /api/compliance-check",
+                "check_batch": "POST /api/compliance-check/batch",
+            },
+            "transactions": {
+                "list": "GET /api/transactions",
+                "get_one": "GET /api/transactions/{id}",
+                "send": "POST /api/transactions/send",
+            },
+            "dashboard": {
+                "stats": "GET /api/dashboard/stats",
+            },
+            "reports": {
+                "generate": "GET /api/reports/{type}",
+                "sar_json": "GET /api/reports/sar/{transaction_id}",
+                "sar_pdf": "GET /api/reports/sar/{transaction_id}/pdf",
+            },
+            "uipath": {
+                "transactions_csv": "GET /api/uipath/transactions/csv",
+                "transactions_json": "GET /api/uipath/transactions/json",
+                "flagged_json": "GET /api/uipath/flagged/json",
+                "single_check": "POST /api/uipath/transaction/check",
+                "batch_csv_check": "POST /api/uipath/compliance-check/csv",
+            },
         },
     }
 
