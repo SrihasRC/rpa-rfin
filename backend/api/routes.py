@@ -78,6 +78,7 @@ async def login(req: LoginRequest):
                 "last_name": user["last_name"],
                 "country": user["country"],
                 "role": user["role"],
+                "account_type": user.get("account_type", "individual"),
                 "kyc_status": user["kyc_status"],
                 "account_age_days": user["account_age_days"],
                 "balance": float(user["balance"]),
@@ -112,6 +113,7 @@ async def get_user(account_id: str):
             "last_name": user["last_name"],
             "country": user["country"],
             "role": user["role"],
+            "account_type": user.get("account_type", "individual"),
             "kyc_status": user["kyc_status"],
             "account_age_days": user["account_age_days"],
             "balance": float(user["balance"]),
@@ -138,11 +140,59 @@ async def list_users():
                     "last_name": u["last_name"],
                     "country": u["country"],
                     "balance": float(u["balance"]),
+                    "account_type": u.get("account_type", "individual"),
                 }
             )
         return {"users": users}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+class TopUpRequest(BaseModel):
+    account_id: str
+    amount: float
+
+
+@router.post("/auth/topup")
+async def topup_balance(req: TopUpRequest):
+    """Add balance to a user account (for demo purposes)."""
+    if req.amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be positive")
+    if req.amount > 1000000:
+        raise HTTPException(status_code=400, detail="Maximum top-up is $1,000,000")
+
+    try:
+        supabase = get_supabase_client()
+
+        # Get current user
+        response = (
+            supabase.table("users")
+            .select("*")
+            .eq("account_id", req.account_id)
+            .single()
+            .execute()
+        )
+        if not response.data:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        user = response.data
+        new_balance = float(user["balance"]) + req.amount
+
+        # Update balance
+        supabase.table("users").update({"balance": new_balance}).eq(
+            "account_id", req.account_id
+        ).execute()
+
+        return {
+            "success": True,
+            "message": f"Added ${req.amount:,.2f} to account",
+            "previous_balance": float(user["balance"]),
+            "new_balance": new_balance,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Top-up error: {str(e)}")
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

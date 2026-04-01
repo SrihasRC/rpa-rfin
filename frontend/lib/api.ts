@@ -40,6 +40,7 @@ export interface User {
   last_name: string;
   country: string;
   role: "user" | "admin";
+  account_type: "individual" | "business";
   kyc_status: string;
   account_age_days: number;
   balance: number;
@@ -195,4 +196,23 @@ export async function downloadSARPdf(transactionId: string) {
   a.download = `SAR_${transactionId}.pdf`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// --- Balance Top-Up ---
+
+export interface TopUpResponse {
+  success: boolean;
+  message: string;
+  previous_balance: number;
+  new_balance: number;
+}
+
+export async function topUpBalance(
+  accountId: string,
+  amount: number
+): Promise<TopUpResponse> {
+  return apiFetch<TopUpResponse>("/api/auth/topup", {
+    method: "POST",
+    body: JSON.stringify({ account_id: accountId, amount }),
+  });
 }

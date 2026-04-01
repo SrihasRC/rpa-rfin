@@ -7,10 +7,21 @@ import { StatCard } from "@/components/stat-card";
 import { RiskBadge } from "@/components/risk-badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { getTransactions, getDashboardStats, type User } from "@/lib/api";
+import { getTransactions, getDashboardStats, topUpBalance, type User } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { DashboardStats, Transaction } from "@/lib/types";
 import Link from "next/link";
@@ -21,7 +32,8 @@ import {
   AlertCircleIcon, 
   Tick01Icon,
   ArrowRight01Icon,
-  Wallet01Icon
+  Wallet01Icon,
+  Add01Icon
 } from "@hugeicons/core-free-icons";
 
 export default function PortalPage() {
@@ -31,6 +43,12 @@ export default function PortalPage() {
   const [recentTxns, setRecentTxns] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Top-up state
+  const [topUpOpen, setTopUpOpen] = useState(false);
+  const [topUpAmount, setTopUpAmount] = useState("");
+  const [topUpLoading, setTopUpLoading] = useState(false);
+  const [topUpError, setTopUpError] = useState<string | null>(null);
 
   useEffect(() => {
     // Check if user is logged in
@@ -69,6 +87,35 @@ export default function PortalPage() {
     }
     load();
   }, [router]);
+
+  const handleTopUp = async () => {
+    const amount = parseFloat(topUpAmount);
+    if (isNaN(amount) || amount <= 0) {
+      setTopUpError("Please enter a valid amount");
+      return;
+    }
+    if (amount > 1000000) {
+      setTopUpError("Maximum top-up is $1,000,000");
+      return;
+    }
+
+    setTopUpLoading(true);
+    setTopUpError(null);
+
+    try {
+      const result = await topUpBalance(user!.account_id, amount);
+      // Update local user state
+      const updatedUser = { ...user!, balance: result.new_balance };
+      setUser(updatedUser);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+      setTopUpOpen(false);
+      setTopUpAmount("");
+    } catch (err) {
+      setTopUpError(err instanceof Error ? err.message : "Top-up failed");
+    } finally {
+      setTopUpLoading(false);
+    }
+  };
 
   if (loading || !user) {
     return (
@@ -115,6 +162,9 @@ export default function PortalPage() {
             </h2>
             <p className="text-muted-foreground">
               Account: {user.account_id}
+              <span className="ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                {user.account_type === "business" ? "Business" : "Individual"}
+              </span>
             </p>
           </div>
           <Link href="/portal/send">
@@ -127,12 +177,74 @@ export default function PortalPage() {
 
         {/* Quick Stats */}
         <div className="grid gap-4 sm:grid-cols-4">
-          <StatCard
-            title="Balance"
-            value={formatCurrency(user.balance, "USD")}
-            icon={<HugeiconsIcon icon={Wallet01Icon} size={20} />}
-            variant="success"
-          />
+          <Card className="border-emerald-500/20 bg-emerald-500/5">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-emerald-500/10 p-2 text-emerald-600">
+                    <HugeiconsIcon icon={Wallet01Icon} size={20} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Balance</p>
+                    <p className="text-xl font-bold">{formatCurrency(user.balance, "USD")}</p>
+                  </div>
+                </div>
+                <Dialog open={topUpOpen} onOpenChange={setTopUpOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline" className="gap-1">
+                      <HugeiconsIcon icon={Add01Icon} size={14} />
+                      Top Up
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Add Balance</DialogTitle>
+                      <DialogDescription>
+                        Top up your account balance for testing transactions.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="amount">Amount (USD)</Label>
+                        <Input
+                          id="amount"
+                          type="number"
+                          placeholder="Enter amount"
+                          value={topUpAmount}
+                          onChange={(e) => setTopUpAmount(e.target.value)}
+                          min="1"
+                          max="1000000"
+                        />
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {[1000, 5000, 10000, 50000, 100000].map((amt) => (
+                          <Button
+                            key={amt}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setTopUpAmount(String(amt))}
+                          >
+                            ${amt.toLocaleString()}
+                          </Button>
+                        ))}
+                      </div>
+                      {topUpError && (
+                        <p className="text-sm text-destructive">{topUpError}</p>
+                      )}
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setTopUpOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button onClick={handleTopUp} disabled={topUpLoading}>
+                        {topUpLoading ? "Processing..." : "Add Balance"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardContent>
+          </Card>
           <StatCard
             title="Transactions"
             value={stats?.total_transactions || 0}
