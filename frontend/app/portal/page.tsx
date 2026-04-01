@@ -190,12 +190,14 @@ export default function PortalPage() {
                   </div>
                 </div>
                 <Dialog open={topUpOpen} onOpenChange={setTopUpOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" variant="outline" className="gap-1">
-                      <HugeiconsIcon icon={Add01Icon} size={14} />
-                      Top Up
-                    </Button>
-                  </DialogTrigger>
+                  <DialogTrigger
+                    render={
+                      <Button size="sm" variant="outline" className="gap-1">
+                        <HugeiconsIcon icon={Add01Icon} size={14} />
+                        Top Up
+                      </Button>
+                    }
+                  />
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Add Balance</DialogTitle>
