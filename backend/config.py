@@ -63,10 +63,13 @@ SANCTIONED_ENTITIES = [
 
 # --- ML Model ---
 ML_MODEL_PATH = os.path.join(os.path.dirname(__file__), "ml", "model.pkl")
-ML_RISK_HIGH_THRESHOLD = 0.8
+ML_RISK_HIGH_THRESHOLD = 0.75  # Lowered from 0.8 to catch more high-risk
 ML_RISK_MEDIUM_THRESHOLD = 0.4
 
 # --- Decision Thresholds ---
 HIGH_RISK_RULE_COUNT = 3
 HIGH_RISK_COMBINED_ML = 0.5
 MEDIUM_RISK_RULE_COUNT = 2
+
+# --- Amount-based escalation (in USD) ---
+VERY_HIGH_VALUE_THRESHOLD_USD = 50_000  # Amounts above this get extra scrutiny

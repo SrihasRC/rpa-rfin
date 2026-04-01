@@ -11,7 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { sendTransaction, type User } from "@/lib/api";
+import { sendTransaction, getExchangeRates, type User } from "@/lib/api";
 import { formatCurrency } from "@/lib/format";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -20,15 +20,17 @@ import {
   MoneySend01Icon,
   AlertCircleIcon,
   Wallet01Icon,
+  Exchange01Icon,
 } from "@hugeicons/core-free-icons";
 
-const CURRENCIES = ["USD", "INR", "EUR", "GBP", "JPY", "AUD", "CAD", "SGD", "AED", "CHF"];
 const TXN_TYPES = ["wire_transfer", "ach", "card_payment", "internal_transfer"];
 
 interface SendResult {
   transaction_id: string;
   amount: number;
   currency: string;
+  amount_usd: number;
+  exchange_rate: number;
   receiver_name?: string;
   timestamp: string;
   risk_level: string;
@@ -47,6 +49,10 @@ export default function SendMoneyPage() {
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<SendResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // Exchange rates
+  const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({});
+  const [supportedCurrencies, setSupportedCurrencies] = useState<string[]>(["USD"]);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -60,7 +66,21 @@ export default function SendMoneyPage() {
       return;
     }
     setUser(userData);
+    
+    // Fetch exchange rates
+    getExchangeRates()
+      .then((res) => {
+        setExchangeRates(res.rates);
+        setSupportedCurrencies(res.supported_currencies);
+      })
+      .catch(console.error);
   }, [router]);
+
+  // Calculate USD equivalent
+  const amountNum = parseFloat(amount) || 0;
+  const exchangeRate = exchangeRates[currency] || 1;
+  const amountInUsd = amountNum * exchangeRate;
+  const isInsufficientBalance = amountInUsd > (user?.balance || 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,6 +112,8 @@ export default function SendMoneyPage() {
         transaction_id: res.transaction_id,
         amount: res.amount,
         currency: res.currency,
+        amount_usd: res.amount_usd,
+        exchange_rate: res.exchange_rate,
         receiver_name: res.receiver_name,
         timestamp: res.timestamp,
         risk_level: res.compliance.risk_level,
@@ -158,11 +180,22 @@ export default function SendMoneyPage() {
                     <p className="font-mono text-sm">{result.transaction_id}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Amount</p>
+                    <p className="text-xs text-muted-foreground">Amount Sent</p>
                     <p className="text-sm font-medium">
                       {formatCurrency(result.amount, result.currency)}
+                      {result.currency !== "USD" && (
+                        <span className="ml-1 text-muted-foreground">
+                          ({formatCurrency(result.amount_usd, "USD")})
+                        </span>
+                      )}
                     </p>
                   </div>
+                  {result.currency !== "USD" && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Exchange Rate</p>
+                      <p className="text-sm">1 {result.currency} = {result.exchange_rate} USD</p>
+                    </div>
+                  )}
                   <div>
                     <p className="text-xs text-muted-foreground">Recipient</p>
                     <p className="text-sm">{result.receiver_name || receiverId}</p>
@@ -230,15 +263,26 @@ export default function SendMoneyPage() {
                       type="number"
                       step="0.01"
                       min="1"
-                      max={user.balance}
                       placeholder="0.00"
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
                       required
                       className="text-lg font-medium"
                     />
-                    {parseFloat(amount) > user.balance && (
-                      <p className="text-xs text-destructive">Exceeds available balance</p>
+                    {/* Currency conversion info */}
+                    {amountNum > 0 && currency !== "USD" && (
+                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <HugeiconsIcon icon={Exchange01Icon} size={14} />
+                        <span>
+                          {formatCurrency(amountNum, currency)} = {formatCurrency(amountInUsd, "USD")}
+                        </span>
+                        <span className="text-xs">(Rate: 1 {currency} = {exchangeRate} USD)</span>
+                      </div>
+                    )}
+                    {isInsufficientBalance && amountNum > 0 && (
+                      <p className="text-xs text-destructive">
+                        Insufficient balance. Need {formatCurrency(amountInUsd, "USD")} but have {formatCurrency(user.balance, "USD")}
+                      </p>
                     )}
                   </div>
                   <div className="space-y-2">
@@ -248,7 +292,7 @@ export default function SendMoneyPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {CURRENCIES.map((c) => (
+                        {supportedCurrencies.map((c) => (
                           <SelectItem key={c} value={c}>{c}</SelectItem>
                         ))}
                       </SelectContent>
@@ -313,7 +357,7 @@ export default function SendMoneyPage() {
                   type="submit" 
                   className="w-full" 
                   size="lg" 
-                  disabled={sending || parseFloat(amount) > user.balance || !amount}
+                  disabled={sending || isInsufficientBalance || !amount || amountNum <= 0}
                 >
                   {sending ? (
                     <span className="flex items-center gap-2">
@@ -323,7 +367,11 @@ export default function SendMoneyPage() {
                   ) : (
                     <span className="flex items-center gap-2">
                       <HugeiconsIcon icon={MoneySend01Icon} size={18} />
-                      {`Send ${amount ? formatCurrency(parseFloat(amount), currency) : "Money"}`}
+                      {amount ? (
+                        currency === "USD" 
+                          ? `Send ${formatCurrency(amountNum, "USD")}`
+                          : `Send ${formatCurrency(amountNum, currency)} (${formatCurrency(amountInUsd, "USD")})`
+                      ) : "Send Money"}
                     </span>
                   )}
                 </Button>

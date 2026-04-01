@@ -196,6 +196,27 @@ async def topup_balance(req: TopUpRequest):
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# CURRENCY EXCHANGE RATES
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+@router.get("/exchange-rates")
+async def get_exchange_rates():
+    """
+    Get current exchange rates (currency to USD).
+    These are approximate rates for compliance threshold normalization.
+    """
+    from config import CURRENCY_TO_USD, SUPPORTED_CURRENCIES
+
+    return {
+        "base_currency": "USD",
+        "rates": CURRENCY_TO_USD,
+        "supported_currencies": SUPPORTED_CURRENCIES,
+        "note": "Rates are approximate and used for compliance threshold calculations",
+    }
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # COMPLIANCE CHECK ENDPOINTS
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -336,11 +357,14 @@ async def send_transaction(
     """
     Send a transaction (user portal).
     1. Validates sender exists
-    2. Computes behavioral features from transaction history
-    3. Runs compliance check
-    4. Stores transaction in database
-    5. Updates user balance
+    2. Converts foreign currency to USD for balance deduction
+    3. Computes behavioral features from transaction history
+    4. Runs compliance check
+    5. Stores transaction in database
+    6. Updates user balance (in USD)
     """
+    from config import CURRENCY_TO_USD
+
     txn_id = f"TXN_{uuid.uuid4().hex[:12].upper()}"
     timestamp = datetime.utcnow()
 
@@ -360,11 +384,19 @@ async def send_transaction(
 
         sender = user_response.data
 
-        # Check balance
-        if float(sender["balance"]) < txn.amount:
-            raise HTTPException(status_code=400, detail="Insufficient balance")
+        # 2. Currency conversion: Convert transaction amount to USD
+        # User balance is always in USD
+        exchange_rate = CURRENCY_TO_USD.get(txn.currency, 1.0)
+        amount_in_usd = txn.amount * exchange_rate
 
-        # 2. Compute behavioral features from sender's transaction history
+        # Check balance (in USD)
+        if float(sender["balance"]) < amount_in_usd:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Insufficient balance. You need ${amount_in_usd:.2f} USD but have ${float(sender['balance']):.2f} USD",
+            )
+
+        # 3. Compute behavioral features from sender's transaction history
         history_response = (
             supabase.table("transactions")
             .select("*")
@@ -444,8 +476,8 @@ async def send_transaction(
         # 5. Store in database
         await _store_compliance_result(txn_dict, result)
 
-        # 6. Update sender balance
-        new_balance = float(sender["balance"]) - txn.amount
+        # 6. Update sender balance (deduct USD equivalent)
+        new_balance = float(sender["balance"]) - amount_in_usd
         supabase.table("users").update({"balance": new_balance}).eq(
             "account_id", sender_id
         ).execute()
@@ -456,6 +488,8 @@ async def send_transaction(
             "transaction_id": txn_id,
             "amount": txn.amount,
             "currency": txn.currency,
+            "amount_usd": round(amount_in_usd, 2),
+            "exchange_rate": exchange_rate,
             "receiver_name": txn.receiver_name,
             "timestamp": timestamp.isoformat(),
             "status": "completed",
@@ -464,7 +498,7 @@ async def send_transaction(
                 "risk_score": result["risk_score"],
                 "rules_triggered": result["rules_count"],
             },
-            "new_balance": new_balance,
+            "new_balance": round(new_balance, 2),
         }
     except HTTPException:
         raise

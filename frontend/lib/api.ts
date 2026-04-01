@@ -122,6 +122,8 @@ export interface SendTransactionResponse {
   transaction_id: string;
   amount: number;
   currency: string;
+  amount_usd: number;
+  exchange_rate: number;
   receiver_name?: string;
   timestamp: string;
   status: string;
@@ -148,6 +150,19 @@ export async function sendTransaction(
     method: "POST",
     body: JSON.stringify(txn),
   });
+}
+
+// --- Exchange Rates ---
+
+export interface ExchangeRatesResponse {
+  base_currency: string;
+  rates: Record<string, number>;
+  supported_currencies: string[];
+  note: string;
+}
+
+export async function getExchangeRates(): Promise<ExchangeRatesResponse> {
+  return apiFetch<ExchangeRatesResponse>("/api/exchange-rates");
 }
 
 // --- Dashboard ---

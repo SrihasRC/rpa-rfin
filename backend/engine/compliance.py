@@ -27,9 +27,14 @@ def run_compliance_check(txn: dict) -> dict:
 
     # Ensure numeric fields
     numeric_fields = [
-        "amount", "sender_account_age_days", "txn_count_last_24h",
-        "txn_count_last_7d", "txn_count_last_30d", "avg_txn_amount_30d",
-        "same_beneficiary_count_7d", "days_since_last_txn",
+        "amount",
+        "sender_account_age_days",
+        "txn_count_last_24h",
+        "txn_count_last_7d",
+        "txn_count_last_30d",
+        "avg_txn_amount_30d",
+        "same_beneficiary_count_7d",
+        "days_since_last_txn",
     ]
     for field in numeric_fields:
         if field in txn:
@@ -44,8 +49,8 @@ def run_compliance_check(txn: dict) -> dict:
     # Step 2: ML Risk Scoring
     ml_result = predict_risk(txn)
 
-    # Step 3: Final Decision
-    final_risk = determine_final_risk(rule_result, ml_result)
+    # Step 3: Final Decision (now includes txn data for amount-based decisions)
+    final_risk = determine_final_risk(rule_result, ml_result, txn)
 
     # Step 4: Generate Explanation
     explanation = generate_explanation(txn, rule_result, ml_result, final_risk)
