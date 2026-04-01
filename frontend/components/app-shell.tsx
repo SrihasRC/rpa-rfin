@@ -14,7 +14,6 @@ import {
   DocumentValidationIcon, 
   BankIcon, 
   MoneySend01Icon,
-  ShieldCheckIcon,
   Logout01Icon,
   UserIcon
 } from "@hugeicons/core-free-icons";
@@ -54,9 +53,6 @@ export function AppShell({ children, role, user }: AppShellProps) {
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
           {/* Brand */}
           <Link href={role === "admin" ? "/dashboard" : "/portal"} className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <HugeiconsIcon icon={ShieldCheckIcon} size={20} />
-            </div>
             <div>
               <h1 className="text-sm font-bold leading-none tracking-tight">RegTech CFMS</h1>
               <p className="text-[10px] text-muted-foreground">

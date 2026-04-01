@@ -1,5 +1,7 @@
-# UiPath Studio Workflow Guide
+# UiPath Studio Workflow Guide (Extended Reference)
 ## RegTech Financial Compliance Monitoring System - RPA Automation
+
+> **For a simplified guide with just 2 workflows, see [UIPATH_SIMPLE_GUIDE.md](./UIPATH_SIMPLE_GUIDE.md)**
 
 This guide provides step-by-step instructions for creating UiPath workflows to automate compliance monitoring tasks.
 

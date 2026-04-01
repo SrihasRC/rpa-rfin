@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { login } from "@/lib/api";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { ShieldCheckIcon, AlertCircleIcon } from "@hugeicons/core-free-icons";
+import { AlertCircleIcon } from "@hugeicons/core-free-icons";
 
 
 export default function LoginPage() {
@@ -83,9 +83,6 @@ export default function LoginPage() {
       <div className="relative w-full max-w-md">
         {/* Logo / Brand */}
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <HugeiconsIcon icon={ShieldCheckIcon} size={32} />
-          </div>
           <h1 className="text-2xl font-bold tracking-tight">RegTech CFMS</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Financial Compliance Monitoring System
