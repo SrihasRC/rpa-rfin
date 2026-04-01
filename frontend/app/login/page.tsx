@@ -154,6 +154,7 @@ export default function LoginPage() {
                     <p>john@example.com / demo1234</p>
                     <p>jane@example.com / demo1234</p>
                     <p>raj@example.com / demo1234</p>
+                    <p>finance@globaltrade.com / demo1234</p>
                   </div>
                 </CardContent>
               </form>
