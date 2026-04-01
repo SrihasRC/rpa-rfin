@@ -360,7 +360,7 @@ async def send_transaction(
             ).replace(tzinfo=None)
             days_since_last_txn = (now - last_txn_time).days
         else:
-            days_since_last_txn = -1  # First transaction
+            days_since_last_txn = 0  # First transaction
 
         # 3. Build full transaction data
         txn_dict = {
@@ -817,15 +817,15 @@ async def _store_compliance_result(txn: dict, result: dict):
         "receiver_country": txn.get("receiver_country"),
         "transaction_type": txn.get("transaction_type"),
         "kyc_status": txn.get("kyc_status"),
-        "sender_account_age_days": txn.get("sender_account_age_days"),
+        "sender_account_age_days": int(txn.get("sender_account_age_days") or 0),
         "is_sanctioned_entity": txn.get("is_sanctioned_entity", False),
         "is_pep": txn.get("is_pep", False),
-        "txn_count_last_24h": txn.get("txn_count_last_24h", 0),
-        "txn_count_last_7d": txn.get("txn_count_last_7d", 0),
-        "txn_count_last_30d": txn.get("txn_count_last_30d", 0),
-        "avg_txn_amount_30d": txn.get("avg_txn_amount_30d", 0),
-        "same_beneficiary_count_7d": txn.get("same_beneficiary_count_7d", 0),
-        "days_since_last_txn": txn.get("days_since_last_txn", 0),
+        "txn_count_last_24h": int(txn.get("txn_count_last_24h") or 0),
+        "txn_count_last_7d": int(txn.get("txn_count_last_7d") or 0),
+        "txn_count_last_30d": int(txn.get("txn_count_last_30d") or 0),
+        "avg_txn_amount_30d": float(txn.get("avg_txn_amount_30d") or 0),
+        "same_beneficiary_count_7d": int(txn.get("same_beneficiary_count_7d") or 0),
+        "days_since_last_txn": int(txn.get("days_since_last_txn") or 0),
         "is_round_amount": txn.get("is_round_amount", False),
         "final_risk": result["final_risk"],
         "risk_score": result["risk_score"],
